@@ -23,6 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _products = [];
   List<Category> _categories = [];
   String? _categoryId;
+  SortOption _sort = SortOption.newest;
+  bool _listView = false; // false = grid, true = list
   bool _loading = true;
   String? _error;
   int _seq = 0; // ignore out-of-date results when typing fast
@@ -50,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Repository.instance.list(
           query: _searchCtrl.text,
           categoryId: _categoryId,
+          sort: _sort,
         ),
         Repository.instance.categories(),
       ]);
@@ -173,6 +176,37 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSortMenu() {
+    return PopupMenuButton<SortOption>(
+      tooltip: 'Sort',
+      initialValue: _sort,
+      onSelected: (value) {
+        if (value == _sort) return;
+        setState(() => _sort = value);
+        _load();
+      },
+      itemBuilder: (context) => [
+        for (final option in SortOption.values)
+          CheckedPopupMenuItem<SortOption>(
+            value: option,
+            checked: option == _sort,
+            child: Text(option.label),
+          ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.sort, size: 20),
+            const SizedBox(width: 4),
+            Text(_sort.label, style: Theme.of(context).textTheme.labelLarge),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -221,34 +255,151 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: Text(
-            _filtering
-                ? '${_products.length} result${_products.length == 1 ? '' : 's'}'
-                : 'Recently added',
-            style: Theme.of(context).textTheme.titleMedium,
+          padding: const EdgeInsets.fromLTRB(16, 0, 8, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _filtering
+                      ? '${_products.length} result${_products.length == 1 ? '' : 's'}'
+                      : (_sort == SortOption.newest
+                          ? 'Recently added'
+                          : 'All products'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              _buildSortMenu(),
+              IconButton(
+                tooltip: _listView ? 'Grid view' : 'List view',
+                icon: Icon(_listView ? Icons.grid_view : Icons.view_list),
+                onPressed: () => setState(() => _listView = !_listView),
+              ),
+            ],
           ),
         ),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.72,
-            ),
-            itemCount: _products.length,
-            itemBuilder: (context, i) {
-              final product = _products[i];
-              return _ProductCard(
-                product: product,
-                onTap: () => _openDetail(product),
-              );
-            },
-          ),
+          child: _listView
+              ? ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                  itemCount: _products.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) {
+                    final product = _products[i];
+                    return _ProductListTile(
+                      product: product,
+                      onTap: () => _openDetail(product),
+                    );
+                  },
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.72,
+                  ),
+                  itemCount: _products.length,
+                  itemBuilder: (context, i) {
+                    final product = _products[i];
+                    return _ProductCard(
+                      product: product,
+                      onTap: () => _openDetail(product),
+                    );
+                  },
+                ),
         ),
       ],
+    );
+  }
+}
+
+/// Compact row layout: small thumbnail on the left, details on the right.
+class _ProductListTile extends StatelessWidget {
+  final Product product;
+  final VoidCallback onTap;
+
+  const _ProductListTile({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: ProductThumb(
+                    relativePath: product.thumbPath,
+                    cacheWidth: 200,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    if (product.description.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        product.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (product.price != null)
+                          Text(
+                            formatRupiah(product.price!),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        if (product.price != null &&
+                            product.categoryName != null)
+                          const SizedBox(width: 8),
+                        if (product.categoryName != null)
+                          Flexible(
+                            child: Text(
+                              product.categoryName!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: Colors.black54),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.black38),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

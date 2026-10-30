@@ -7,6 +7,19 @@ import '../db/app_db.dart';
 import '../models/models.dart';
 import '../utils/search.dart';
 
+/// How the product list is ordered. [orderBy] is fixed SQL, never user input.
+enum SortOption {
+  newest('Newest first', 'p.created_at DESC'),
+  oldest('Oldest first', 'p.created_at ASC'),
+  nameAsc('Name A–Z', 'p.name COLLATE NOCASE ASC, p.created_at DESC'),
+  nameDesc('Name Z–A', 'p.name COLLATE NOCASE DESC, p.created_at DESC');
+
+  const SortOption(this.label, this.orderBy);
+
+  final String label;
+  final String orderBy;
+}
+
 /// All database access goes through here. If cloud sync is added later, this
 /// is the one place to extend (IDs are UUIDs and every row has timestamps).
 class Repository {
@@ -48,9 +61,13 @@ class Repository {
 
   // ------------------------------------------------------------------ products
 
-  /// Newest first. [query] words must ALL match somewhere in the product's
-  /// searchable text or its category name.
-  Future<List<Product>> list({String query = '', String? categoryId}) async {
+  /// Ordered by [sort] (newest first by default). [query] words must ALL
+  /// match somewhere in the product's searchable text or its category name.
+  Future<List<Product>> list({
+    String query = '',
+    String? categoryId,
+    SortOption sort = SortOption.newest,
+  }) async {
     final where = <String>[];
     final args = <Object?>[];
 
@@ -74,7 +91,7 @@ SELECT p.*, c.name AS category_name,
 FROM products p
 LEFT JOIN categories c ON c.id = p.category_id
 ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
-ORDER BY p.created_at DESC
+ORDER BY ${sort.orderBy}
 ''';
 
     final rows = await _db.rawQuery(sql, args);
