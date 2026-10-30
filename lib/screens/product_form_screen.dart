@@ -17,8 +17,8 @@ class _SpecRow {
   final TextEditingController value;
 
   _SpecRow([String n = '', String v = ''])
-      : name = TextEditingController(text: n),
-        value = TextEditingController(text: v);
+    : name = TextEditingController(text: n),
+      value = TextEditingController(text: v);
 
   void dispose() {
     name.dispose();
@@ -41,6 +41,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
+  final _plu = TextEditingController();
   final _desc = TextEditingController();
   final _price = TextEditingController();
   final _notes = TextEditingController();
@@ -92,6 +93,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         _categories = categories;
         _product = product;
         _name.text = product.name;
+        _plu.text = product.plu;
         _desc.text = product.description;
         _price.text = product.price?.toString() ?? '';
         _notes.text = product.notes;
@@ -116,6 +118,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   @override
   void dispose() {
     _name.dispose();
+    _plu.dispose();
     _desc.dispose();
     _price.dispose();
     _notes.dispose();
@@ -321,6 +324,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     try {
       _product
         ..name = _name.text
+        ..plu = _plu.text
         ..description = _desc.text
         ..categoryId = _categoryId
         ..price = _price.text.isEmpty ? null : int.parse(_price.text)
@@ -349,9 +353,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   // --------------------------------------------------------------------- build
 
   Widget _header(String text) => Padding(
-        padding: const EdgeInsets.only(top: 24, bottom: 8),
-        child: Text(text, style: Theme.of(context).textTheme.titleMedium),
-      );
+    padding: const EdgeInsets.only(top: 24, bottom: 8),
+    child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -368,13 +372,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _loadError != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(_loadError!, textAlign: TextAlign.center),
-                  ),
-                )
-              : _buildForm(context),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(_loadError!, textAlign: TextAlign.center),
+              ),
+            )
+          : _buildForm(context),
     );
   }
 
@@ -391,6 +395,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             validator: (v) => (v == null || v.trim().isEmpty)
                 ? 'Product name is required'
                 : null,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _plu,
+            decoration: const InputDecoration(labelText: 'PLU'),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -438,7 +447,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       controller: _specs[i].name,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
-                          labelText: 'Attribute', isDense: true),
+                        labelText: 'Attribute',
+                        isDense: true,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -447,7 +458,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     child: TextField(
                       controller: _specs[i].value,
                       decoration: const InputDecoration(
-                          labelText: 'Value', isDense: true),
+                        labelText: 'Value',
+                        isDense: true,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -470,7 +483,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   onPressed: () => setState(() {
                     // Fill the first empty row, otherwise add a new one.
                     final empty = _specs.where(
-                        (r) => r.name.text.isEmpty && r.value.text.isEmpty);
+                      (r) => r.name.text.isEmpty && r.value.text.isEmpty,
+                    );
                     if (empty.isNotEmpty) {
                       empty.first.name.text = label;
                     } else {
@@ -496,7 +510,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 _MediaTile(
                   onTap: () => _openImage(i),
                   onRemove: () => _removeMedia(_images[i]),
-                  child: ProductThumb(relativePath: _images[i].path, cacheWidth: 300),
+                  child: ProductThumb(
+                    relativePath: _images[i].path,
+                    cacheWidth: 300,
+                  ),
                 ),
               _AddTile(
                 icon: Icons.add_a_photo_outlined,
@@ -536,8 +553,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             minLines: 2,
             maxLines: 6,
             textCapitalization: TextCapitalization.sentences,
-            decoration:
-                const InputDecoration(hintText: 'Anything else worth saving'),
+            decoration: const InputDecoration(
+              hintText: 'Anything else worth saving',
+            ),
           ),
 
           const SizedBox(height: 24),

@@ -65,7 +65,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete product?'),
         content: const Text(
-            'This removes the product and its photos and videos. This cannot be undone.'),
+          'This removes the product and its photos and videos. This cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -114,25 +115,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null || product == null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(_error ?? 'Not found',
-                        textAlign: TextAlign.center),
-                  ),
-                )
-              : _buildContent(context, product),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(_error ?? 'Not found', textAlign: TextAlign.center),
+              ),
+            )
+          : _buildContent(context, product),
     );
   }
 
   Widget _buildContent(BuildContext context, Product product) {
     final theme = Theme.of(context);
-    final images =
-        product.media.where((m) => m.type == MediaType.image).toList();
-    final videos =
-        product.media.where((m) => m.type == MediaType.video).toList();
-    final imagePaths =
-        images.map((m) => AppDb.instance.resolve(m.path)).toList();
+    final images = product.media
+        .where((m) => m.type == MediaType.image)
+        .toList();
+    final videos = product.media
+        .where((m) => m.type == MediaType.video)
+        .toList();
+    final imagePaths = images
+        .map((m) => AppDb.instance.resolve(m.path))
+        .toList();
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
@@ -145,9 +148,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             children: [
               Text(
                 product.name,
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
+              if (product.plu.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text('PLU: ${product.plu}', style: theme.textTheme.bodyMedium),
+              ],
               if (product.price != null) ...[
                 const SizedBox(height: 4),
                 Text(
@@ -181,7 +189,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         if (i > 0) const Divider(height: 1),
                         Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -189,15 +199,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 width: 110,
                                 child: Text(
                                   product.specs[i].name,
-                                  style: theme.textTheme.bodyMedium
-                                      ?.copyWith(color: Colors.black54),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.black54,
+                                  ),
                                 ),
                               ),
                               Expanded(
                                 child: Text(
                                   product.specs[i].value,
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
@@ -240,8 +252,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Text(
                 'Created ${formatDate(product.createdAt)}\n'
                 'Updated ${formatDate(product.updatedAt)}',
-                style:
-                    theme.textTheme.bodySmall?.copyWith(color: Colors.black54),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.black54,
+                ),
               ),
             ],
           ),
@@ -256,7 +269,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         height: 200,
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         alignment: Alignment.center,
-        child: const Icon(Icons.image_outlined, size: 56, color: Colors.black38),
+        child: const Icon(
+          Icons.image_outlined,
+          size: 56,
+          color: Colors.black38,
+        ),
       );
     }
     return SizedBox(
@@ -270,10 +287,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ImageViewerScreen(
-                    paths: imagePaths,
-                    initialIndex: i,
-                  ),
+                  builder: (_) =>
+                      ImageViewerScreen(paths: imagePaths, initialIndex: i),
                 ),
               ),
               child: Image.file(
@@ -292,8 +307,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               bottom: 10,
               right: 12,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(12),

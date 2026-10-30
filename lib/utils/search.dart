@@ -2,7 +2,7 @@ import '../models/models.dart';
 
 /// Search helpers.
 ///
-/// Every product stores a normalized `search_text` (name + description +
+/// Every product stores a normalized `search_text` (name + PLU + description +
 /// notes + price + all specs). A query is split into words and EVERY word
 /// must appear somewhere in that text (partial match), so "rel", "laci",
 /// "soft closing" and "40cm" all find the same product.
@@ -12,10 +12,7 @@ class SearchUtil {
   static String normalize(String input) {
     var t = input.toLowerCase();
     t = t.replaceAll(RegExp(r'[-_/,;:()]'), ' ');
-    t = t.replaceAllMapped(
-      RegExp(r'(\d)\s+([a-z])'),
-      (m) => '${m[1]}${m[2]}',
-    );
+    t = t.replaceAllMapped(RegExp(r'(\d)\s+([a-z])'), (m) => '${m[1]}${m[2]}');
     return t.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
@@ -55,12 +52,15 @@ class SearchUtil {
   static List<String> expand(String token) => [token, ...?_synonyms[token]];
 
   static String build(Product p) {
-    return normalize([
-      p.name,
-      p.description,
-      p.notes,
-      if (p.price != null) p.price.toString(),
-      for (final s in p.specs) '${s.name} ${s.value}',
-    ].join(' '));
+    return normalize(
+      [
+        p.name,
+        p.plu,
+        p.description,
+        p.notes,
+        if (p.price != null) p.price.toString(),
+        for (final s in p.specs) '${s.name} ${s.value}',
+      ].join(' '),
+    );
   }
 }

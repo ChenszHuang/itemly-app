@@ -66,10 +66,11 @@ class Repository {
   Future<List<Product>> list({
     String query = '',
     String? categoryId,
+    bool archived = false,
     SortOption sort = SortOption.newest,
   }) async {
-    final where = <String>[];
-    final args = <Object?>[];
+    final where = <String>['p.active = ?'];
+    final args = <Object?>[archived ? 0 : 1];
 
     if (categoryId != null) {
       where.add('p.category_id = ?');
@@ -83,7 +84,8 @@ class Repository {
       args.addAll(alts.map((a) => '%$a%'));
     }
 
-    final sql = '''
+    final sql =
+        '''
 SELECT p.*, c.name AS category_name,
   (SELECT m.file_path FROM media m
     WHERE m.product_id = p.id AND m.media_type = 'image'
@@ -99,12 +101,15 @@ ORDER BY ${sort.orderBy}
   }
 
   Future<Product?> get(String id) async {
-    final rows = await _db.rawQuery('''
+    final rows = await _db.rawQuery(
+      '''
 SELECT p.*, c.name AS category_name
 FROM products p
 LEFT JOIN categories c ON c.id = p.category_id
 WHERE p.id = ?
-''', [id]);
+''',
+      [id],
+    );
     if (rows.isEmpty) return null;
 
     final product = Product.fromRow(rows.first);
@@ -116,10 +121,12 @@ WHERE p.id = ?
       orderBy: 'position',
     );
     product.specs = specRows
-        .map((r) => Spec(
-              r['attribute_name'] as String,
-              r['attribute_value'] as String,
-            ))
+        .map(
+          (r) => Spec(
+            r['attribute_name'] as String,
+            r['attribute_value'] as String,
+          ),
+        )
         .toList();
 
     final mediaRows = await _db.query(
@@ -129,14 +136,16 @@ WHERE p.id = ?
       orderBy: 'created_at, rowid',
     );
     product.media = mediaRows
-        .map((r) => MediaItem(
-              id: r['id'] as String,
-              type: r['media_type'] == 'video'
-                  ? MediaType.video
-                  : MediaType.image,
-              path: r['file_path'] as String,
-              createdAt: r['created_at'] as int,
-            ))
+        .map(
+          (r) => MediaItem(
+            id: r['id'] as String,
+            type: r['media_type'] == 'video'
+                ? MediaType.video
+                : MediaType.image,
+            path: r['file_path'] as String,
+            createdAt: r['created_at'] as int,
+          ),
+        )
         .toList();
 
     return product;
@@ -152,6 +161,8 @@ WHERE p.id = ?
     final row = <String, Object?>{
       'id': product.id,
       'name': product.name.trim(),
+      'plu': product.plu.trim(),
+      'active': product.active ? 1 : 0,
       'description': product.description.trim(),
       'category_id': product.categoryId,
       'price': product.price,
@@ -170,8 +181,11 @@ WHERE p.id = ?
       );
       if (updated == 0) await txn.insert('products', row);
 
-      await txn.delete('specs',
-          where: 'product_id = ?', whereArgs: [product.id]);
+      await txn.delete(
+        'specs',
+        where: 'product_id = ?',
+        whereArgs: [product.id],
+      );
       for (var i = 0; i < product.specs.length; i++) {
         await txn.insert('specs', {
           'id': const Uuid().v4(),
@@ -182,8 +196,11 @@ WHERE p.id = ?
         });
       }
 
-      await txn.delete('media',
-          where: 'product_id = ?', whereArgs: [product.id]);
+      await txn.delete(
+        'media',
+        where: 'product_id = ?',
+        whereArgs: [product.id],
+      );
       for (final m in product.media) {
         await txn.insert('media', {
           'id': m.id,
@@ -192,6 +209,23 @@ WHERE p.id = ?
           'file_path': m.path,
           'created_at': m.createdAt,
         });
+      }
+    });
+  }
+
+  Future<void> setActive(List<String> ids, bool active) async {
+    if (ids.isEmpty) return;
+    final updatedAt = DateTime.now().millisecondsSinceEpoch;
+    await _db.transaction((txn) async {
+      for (var start = 0; start < ids.length; start += 500) {
+        final batch = ids.skip(start).take(500).toList();
+        final placeholders = List.filled(batch.length, '?').join(', ');
+        await txn.update(
+          'products',
+          {'active': active ? 1 : 0, 'updated_at': updatedAt},
+          where: 'id IN ($placeholders)',
+          whereArgs: batch,
+        );
       }
     });
   }

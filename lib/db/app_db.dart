@@ -22,7 +22,7 @@ class AppDb {
 
     db = await openDatabase(
       p.join(await getDatabasesPath(), 'catalog.db'),
-      version: 1,
+      version: 3,
       onConfigure: (d) async {
         await d.execute('PRAGMA foreign_keys = ON');
       },
@@ -37,6 +37,8 @@ CREATE TABLE categories (
 CREATE TABLE products (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  plu TEXT NOT NULL DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1,
   description TEXT NOT NULL DEFAULT '',
   category_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
   price INTEGER,
@@ -64,7 +66,23 @@ CREATE TABLE media (
         await d.execute('CREATE INDEX idx_specs_product ON specs(product_id)');
         await d.execute('CREATE INDEX idx_media_product ON media(product_id)');
         await d.execute(
-            'CREATE INDEX idx_products_created ON products(created_at)');
+          'CREATE INDEX idx_products_created ON products(created_at)',
+        );
+      },
+      onUpgrade: (d, oldVersion, newVersion) async {
+        final columns = await d.rawQuery('PRAGMA table_info(products)');
+        final columnNames = columns.map((column) => column['name']).toSet();
+
+        if (oldVersion < 2 && !columnNames.contains('plu')) {
+          await d.execute(
+            "ALTER TABLE products ADD COLUMN plu TEXT NOT NULL DEFAULT ''",
+          );
+        }
+        if (oldVersion < 3 && !columnNames.contains('active')) {
+          await d.execute(
+            'ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1',
+          );
+        }
       },
     );
   }
