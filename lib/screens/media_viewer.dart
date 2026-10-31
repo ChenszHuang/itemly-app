@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -53,7 +54,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
         onPageChanged: (i) => setState(() => _index = i),
         backgroundDecoration: const BoxDecoration(color: Colors.black),
         builder: (context, i) => PhotoViewGalleryPageOptions(
-          imageProvider: FileImage(File(widget.paths[i])),
+          imageProvider: kIsWeb
+              ? NetworkImage(widget.paths[i])
+              : FileImage(File(widget.paths[i])),
           minScale: PhotoViewComputedScale.contained,
           maxScale: PhotoViewComputedScale.covered * 4,
         ),
@@ -80,7 +83,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(File(widget.path));
+    _controller = kIsWeb
+        ? VideoPlayerController.networkUrl(Uri.parse(widget.path))
+        : VideoPlayerController.file(File(widget.path));
     _init();
   }
 
@@ -122,36 +127,36 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
               )
             : !_ready
-                ? const CircularProgressIndicator()
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      AspectRatio(
-                        aspectRatio: _controller.value.aspectRatio,
-                        child: VideoPlayer(_controller),
-                      ),
-                      VideoProgressIndicator(
-                        _controller,
-                        allowScrubbing: true,
-                        padding: const EdgeInsets.all(16),
-                      ),
-                      ValueListenableBuilder<VideoPlayerValue>(
-                        valueListenable: _controller,
-                        builder: (context, value, _) => IconButton(
-                          iconSize: 48,
-                          color: Colors.white,
-                          icon: Icon(
-                            value.isPlaying
-                                ? Icons.pause_circle_filled
-                                : Icons.play_circle_filled,
-                          ),
-                          onPressed: () => value.isPlaying
-                              ? _controller.pause()
-                              : _controller.play(),
-                        ),
-                      ),
-                    ],
+            ? const CircularProgressIndicator()
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AspectRatio(
+                    aspectRatio: _controller.value.aspectRatio,
+                    child: VideoPlayer(_controller),
                   ),
+                  VideoProgressIndicator(
+                    _controller,
+                    allowScrubbing: true,
+                    padding: const EdgeInsets.all(16),
+                  ),
+                  ValueListenableBuilder<VideoPlayerValue>(
+                    valueListenable: _controller,
+                    builder: (context, value, _) => IconButton(
+                      iconSize: 48,
+                      color: Colors.white,
+                      icon: Icon(
+                        value.isPlaying
+                            ? Icons.pause_circle_filled
+                            : Icons.play_circle_filled,
+                      ),
+                      onPressed: () => value.isPlaying
+                          ? _controller.pause()
+                          : _controller.play(),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

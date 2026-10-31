@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -172,16 +174,22 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   /// Copies a picked file into the app's private media folder.
-  Future<MediaItem> _store(String sourcePath, MediaType type) async {
-    var ext = p.extension(sourcePath);
+  Future<MediaItem> _store(XFile sourceFile, MediaType type) async {
+    var ext = p.extension(sourceFile.name);
     if (ext.isEmpty) ext = type == MediaType.image ? '.jpg' : '.mp4';
     final id = const Uuid().v4();
     final relative = p.join('media', '$id$ext');
-    await File(sourcePath).copy(AppDb.instance.resolve(relative));
+    final path = kIsWeb
+        ? 'data:${sourceFile.mimeType ?? (type == MediaType.image ? 'image/jpeg' : 'video/mp4')};base64,'
+              '${base64Encode(await sourceFile.readAsBytes())}'
+        : relative;
+    if (!kIsWeb) {
+      await File(sourceFile.path).copy(AppDb.instance.resolve(relative));
+    }
     return MediaItem(
       id: id,
       type: type,
-      path: relative,
+      path: path,
       createdAt: DateTime.now().millisecondsSinceEpoch,
     );
   }
@@ -208,7 +216,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
       final added = <MediaItem>[];
       for (final f in files) {
-        added.add(await _store(f.path, MediaType.image));
+        added.add(await _store(f, MediaType.image));
       }
       if (!mounted) return;
       setState(() => _media.addAll(added));
@@ -226,7 +234,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         maxDuration: const Duration(minutes: 2),
       );
       if (f == null) return;
-      final item = await _store(f.path, MediaType.video);
+      final item = await _store(f, MediaType.video);
       if (!mounted) return;
       setState(() => _media.add(item));
     } catch (e) {

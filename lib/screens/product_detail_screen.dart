@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
@@ -291,15 +292,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ImageViewerScreen(paths: imagePaths, initialIndex: i),
                 ),
               ),
-              child: Image.file(
-                File(imagePaths[i]),
-                fit: BoxFit.cover,
-                width: double.infinity,
-                cacheWidth: 1000,
-                errorBuilder: (_, _, _) => const Center(
-                  child: Icon(Icons.broken_image_outlined, size: 48),
-                ),
-              ),
+              child: kIsWeb
+                  ? Image.network(
+                      imagePaths[i],
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      cacheWidth: 1000,
+                      errorBuilder: (_, _, _) => const Center(
+                        child: Icon(Icons.broken_image_outlined, size: 48),
+                      ),
+                    )
+                  : Image.file(
+                      File(imagePaths[i]),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      cacheWidth: 1000,
+                      errorBuilder: (_, _, _) => const Center(
+                        child: Icon(Icons.broken_image_outlined, size: 48),
+                      ),
+                    ),
             ),
           ),
           if (imagePaths.length > 1)

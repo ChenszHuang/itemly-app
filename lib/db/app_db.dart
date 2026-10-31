@@ -1,31 +1,54 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 /// Owns the SQLite database and the private folder where media is stored.
 ///
-/// Media files live in `<app documents>/media` and only RELATIVE paths are
-/// stored in the database, so the data can be moved or synced later.
+/// Android:
+/// Database and media are stored in the app's private directory.
+///
+/// Web:
+/// Database is stored using IndexedDB through sqflite_common_ffi_web.
 class AppDb {
   AppDb._();
+
   static final AppDb instance = AppDb._();
 
   late final Database db;
   late final String _root;
 
   Future<void> init() async {
-    final docs = await getApplicationDocumentsDirectory();
-    _root = docs.path;
-    await Directory(p.join(_root, 'media')).create(recursive: true);
+    String dbPath;
+
+    if (kIsWeb) {
+      // WEB: Initialize SQLite Web
+      databaseFactory = databaseFactoryFfiWeb;
+
+      _root = '';
+      dbPath = 'catalog_web.db';
+    } else {
+      // ANDROID: Keep existing database and media location
+      final docs = await getApplicationDocumentsDirectory();
+
+      _root = docs.path;
+
+      await Directory(p.join(_root, 'media')).create(recursive: true);
+
+      dbPath = p.join(await getDatabasesPath(), 'catalog.db');
+    }
 
     db = await openDatabase(
-      p.join(await getDatabasesPath(), 'catalog.db'),
+      dbPath,
       version: 3,
+
       onConfigure: (d) async {
         await d.execute('PRAGMA foreign_keys = ON');
       },
+
       onCreate: (d, version) async {
         await d.execute('''
 CREATE TABLE categories (
@@ -33,6 +56,7 @@ CREATE TABLE categories (
   name TEXT NOT NULL UNIQUE COLLATE NOCASE,
   created_at INTEGER NOT NULL
 )''');
+
         await d.execute('''
 CREATE TABLE products (
   id TEXT PRIMARY KEY,
@@ -47,6 +71,7 @@ CREATE TABLE products (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 )''');
+
         await d.execute('''
 CREATE TABLE specs (
   id TEXT PRIMARY KEY,
@@ -55,6 +80,7 @@ CREATE TABLE specs (
   attribute_value TEXT NOT NULL,
   position INTEGER NOT NULL DEFAULT 0
 )''');
+
         await d.execute('''
 CREATE TABLE media (
   id TEXT PRIMARY KEY,
@@ -63,14 +89,19 @@ CREATE TABLE media (
   file_path TEXT NOT NULL,
   created_at INTEGER NOT NULL
 )''');
+
         await d.execute('CREATE INDEX idx_specs_product ON specs(product_id)');
+
         await d.execute('CREATE INDEX idx_media_product ON media(product_id)');
+
         await d.execute(
           'CREATE INDEX idx_products_created ON products(created_at)',
         );
       },
+
       onUpgrade: (d, oldVersion, newVersion) async {
         final columns = await d.rawQuery('PRAGMA table_info(products)');
+
         final columnNames = columns.map((column) => column['name']).toSet();
 
         if (oldVersion < 2 && !columnNames.contains('plu')) {
@@ -78,6 +109,7 @@ CREATE TABLE media (
             "ALTER TABLE products ADD COLUMN plu TEXT NOT NULL DEFAULT ''",
           );
         }
+
         if (oldVersion < 3 && !columnNames.contains('active')) {
           await d.execute(
             'ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1',
@@ -88,5 +120,8 @@ CREATE TABLE media (
   }
 
   /// Turns a stored relative path into an absolute file path.
-  String resolve(String relative) => p.join(_root, relative);
+  String resolve(String relative) {
+    if (kIsWeb) return relative;
+    return p.join(_root, relative);
+  }
 }

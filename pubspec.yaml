@@ -1,4 +1,4 @@
-name: product_catalog
+name: itemly
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -35,6 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   sqflite: ^2.4.5
+  sqflite_common_ffi_web: ^1.2.0
   path: ^1.9.1
   path_provider: ^2.1.6
   image_picker: ^1.2.4

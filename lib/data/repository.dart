@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
@@ -9,8 +10,8 @@ import '../utils/search.dart';
 
 /// How the product list is ordered. [orderBy] is fixed SQL, never user input.
 enum SortOption {
-  newest('Newest first', 'p.created_at DESC'),
-  oldest('Oldest first', 'p.created_at ASC'),
+  newest('Newest', 'p.created_at DESC'),
+  oldest('Oldest', 'p.created_at ASC'),
   nameAsc('Name A–Z', 'p.name COLLATE NOCASE ASC, p.created_at DESC'),
   nameDesc('Name Z–A', 'p.name COLLATE NOCASE DESC, p.created_at DESC');
 
@@ -245,6 +246,7 @@ WHERE p.id = ?
   }
 
   Future<void> deleteFile(String relativePath) async {
+    if (kIsWeb) return;
     try {
       final f = File(AppDb.instance.resolve(relativePath));
       if (await f.exists()) await f.delete();
