@@ -41,6 +41,7 @@ class Repository {
   /// Creates the category, or returns the existing one with the same name.
   Future<Category> addCategory(String rawName) async {
     final name = rawName.trim();
+    if (name.isEmpty) throw ArgumentError('Category name cannot be empty.');
     final existing = await _db.query(
       'categories',
       where: 'name = ? COLLATE NOCASE',
@@ -58,6 +59,51 @@ class Repository {
       'created_at': DateTime.now().millisecondsSinceEpoch,
     });
     return c;
+  }
+
+  Future<void> updateCategory(String id, String rawName) async {
+    final name = rawName.trim();
+    if (name.isEmpty) throw ArgumentError('Category name cannot be empty.');
+
+    final existing = await _db.query(
+      'categories',
+      where: 'name = ? COLLATE NOCASE AND id != ?',
+      whereArgs: [name, id],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      throw StateError('A category named "$name" already exists.');
+    }
+
+    final updated = await _db.update(
+      'categories',
+      {'name': name},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (updated == 0) throw StateError('Category no longer exists.');
+  }
+
+  Future<void> deleteCategories(List<String> ids) async {
+    final uniqueIds = ids.toSet().toList();
+    if (uniqueIds.isEmpty) return;
+
+    await _db.transaction((txn) async {
+      var deletedCount = 0;
+      for (var start = 0; start < uniqueIds.length; start += 500) {
+        final batch = uniqueIds.skip(start).take(500).toList();
+        final placeholders = List.filled(batch.length, '?').join(', ');
+        deletedCount += await txn.delete(
+          'categories',
+          where: 'id IN ($placeholders)',
+          whereArgs: batch,
+        );
+      }
+
+      if (deletedCount != uniqueIds.length) {
+        throw StateError('One or more categories no longer exist.');
+      }
+    });
   }
 
   // ------------------------------------------------------------------ products

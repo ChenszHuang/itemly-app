@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../data/repository.dart';
 import '../db/app_db.dart';
 import '../models/models.dart';
+import '../widgets/category_name_dialog.dart';
 import '../widgets/thumb.dart';
 import 'media_viewer.dart';
 
@@ -308,7 +309,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   Future<void> _createCategory() async {
     final name = await showDialog<String>(
       context: context,
-      builder: (_) => const _NewCategoryDialog(),
+      builder: (_) => const CategoryNameDialog(),
     );
     if (name == null) return;
     try {
@@ -664,50 +665,6 @@ class _AddTile extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _NewCategoryDialog extends StatefulWidget {
-  const _NewCategoryDialog();
-
-  @override
-  State<_NewCategoryDialog> createState() => _NewCategoryDialogState();
-}
-
-class _NewCategoryDialogState extends State<_NewCategoryDialog> {
-  final _ctrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty) return;
-    Navigator.pop(context, text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('New category'),
-      content: TextField(
-        controller: _ctrl,
-        autofocus: true,
-        textCapitalization: TextCapitalization.words,
-        decoration: const InputDecoration(labelText: 'Category name'),
-        onSubmitted: (_) => _submit(),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Add')),
-      ],
     );
   }
 }
